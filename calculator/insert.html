@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Basic Calculator</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --key: #1f2937;
+      --key-light: #374151;
+      --accent: #22c55e;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(80rem 80rem at 20% -20%, #1f2937, var(--bg));
+      color: var(--text);
+      font: 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    .calc {
+      width: min(92vw, 380px);
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: 0 20px 60px rgba(0,0,0,.35);
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+    .display {
+      height: 88px;
+      background: #0b1220;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: grid;
+      align-content: center;
+      text-align: right;
+      overflow: hidden;
+    }
+    .prev {
+      min-height: 22px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .curr {
+      font-size: clamp(26px, 6vw, 36px);
+      font-weight: 700;
+      word-break: break-all;
+    }
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr); /* CSS Grid for alignment */
+      gap: 10px;
+    }
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 14px;
+      background: var(--key);
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .06s ease, background .2s ease;
+      user-select: none;
+    }
+    button:active { transform: translateY(1px) scale(.99); }
+    button.op { background: var(--key-light); }
+    button.equals { background: var(--accent); color: #0b1220; }
+    button.span-2 { grid-column: span 2; }
+  </style>
+</head>
+<body>
+  <div class="calc" id="calculator">
+    <div class="display">
+      <div class="prev" id="prev"></div>
+      <div class="curr" id="curr">0</div>
+    </div>
+
+    <div class="keys">
+      <!-- digits -->
+      <button data-num>7</button>
+      <button data-num>8</button>
+      <button data-num>9</button>
+      <button class="op" data-op="divide">÷</button>
+
+      <button data-num>4</button>
+      <button data-num>5</button>
+      <button data-num>6</button>
+      <button class="op" data-op="multiply">×</button>
+
+      <button data-num>1</button>
+      <button data-num>2</button>
+      <button data-num>3</button>
+      <button class="op" data-op="minus">−</button>
+
+      <button data-num>0</button>
+      <button data-num>.</button>
+      <button class="equals span-2" id="equals">=</button>
+      <button class="op" data-op="plus">+</button>
+
+      <!-- clear (kept minimal & practical) -->
+      <button class="span-2" id="clear">C</button>
+      <button class="span-2" id="back">DEL</button>
+    </div>
+  </div>
+
+  <script>
+    // Display elements
+    const prevEl = document.getElementById('prev');
+    const currEl = document.getElementById('curr');
+
+    // State
+    let current = '0';
+    let previous = '';
+    let operator = null;
+    let justEvaluated = false;
+
+    // UTILITIES
+    function updateDisplay() {
+      prevEl.textContent = previous && operator
+        ? `${previous} ${symbol(operator)}`
+        : '';
+      currEl.textContent = current;
+    }
+
+    function symbol(op) {
+      if (op === 'plus') return '+';
+      if (op === 'minus') return '−';
+      if (op === 'multiply') return '×';
+      if (op === 'divide') return '÷';
+      return '';
+    }
+
+    function inputDigit(d) {
+      if (justEvaluated) { current = '0'; justEvaluated = false; }
+      if (d === '.') {
+        if (!current.includes('.')) current += '.';
+        return updateDisplay();
+      }
+      if (current === '0') current = d;
+      else current += d;
+      updateDisplay();
+    }
+
+    function setOperator(op) {
+      // if-else used to manage different user flows
+      if (operator && previous !== '' && current !== '') {
+        compute(); // chain calculations
+      } else {
+        previous = current;
+      }
+      operator = op;
+      current = '0';
+      updateDisplay();
+    }
+
+    function compute() {
+      const a = parseFloat(previous);
+      const b = parseFloat(current);
+      let result = 0;
+
+      // if-else and operators to perform operations
+      if (operator === 'plus') result = a + b;
+      else if (operator === 'minus') result = a - b;
+      else if (operator === 'multiply') result = a * b;
+      else if (operator === 'divide') {
+        if (b === 0) {
+          current = 'Cannot divide by 0';
+          previous = '';
+          operator = null;
+          updateDisplay();
+          return;
+        }
+        result = a / b;
+      } else {
+        return; // nothing to compute
+      }
+
+      current = String(Number.isFinite(result) ? +result.toFixed(10) : result);
+      previous = '';
+      operator = null;
+      justEvaluated = true;
+      updateDisplay();
+    }
+
+    function clearAll() {
+      current = '0';
+      previous = '';
+      operator = null;
+      justEvaluated = false;
+      updateDisplay();
+    }
+
+    function backspace() {
+      if (justEvaluated) return;
+      if (current.length <= 1) current = '0';
+      else current = current.slice(0, -1);
+      updateDisplay();
+    }
+
+    // EVENT LISTENERS (attached via loops)
+    const numButtons = document.querySelectorAll('[data-num]');
+    // loop to attach handlers to number keys
+    numButtons.forEach(btn => {
+      btn.addEventListener('click', () => inputDigit(btn.textContent));
+    });
+
+    const opButtons = document.querySelectorAll('[data-op]');
+    // loop to attach handlers to operator keys
+    opButtons.forEach(btn => {
+      btn.addEventListener('click', () => setOperator(btn.dataset.op));
+    });
+
+    document.getElementById('equals').addEventListener('click', compute);
+    document.getElementById('clear').addEventListener('click', clearAll);
+    document.getElementById('back').addEventListener('click', backspace);
+
+    // Optional: keyboard support (still using event listeners & if-else)
+    window.addEventListener('keydown', (e) => {
+      const k = e.key;
+      if ((k >= '0' && k <= '9') || k === '.') inputDigit(k);
+      else if (k === '+') setOperator('plus');
+      else if (k === '-') setOperator('minus');
+      else if (k === '*') setOperator('multiply');
+      else if (k === '/') setOperator('divide');
+      else if (k === 'Enter' || k === '=') compute();
+      else if (k === 'Backspace') backspace();
+      else if (k.toLowerCase() === 'c') clearAll();
+    });
+
+    updateDisplay();
+  </script>
+</body>
+</html>
